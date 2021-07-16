@@ -9,4 +9,6 @@ I then changed the unix date stamp in the prices dataframe to a readable date, a
 
 I used pd.concat to combine the dataframes and create a new dataframe with my desired data.
 
-Finally, I created a plotly graph to show the correlation between price and volum on any given date over the 30-day period.
+Next, I created a plotly graph to show the correlation between price and volum on any given date over the 30-day period.
+
+I then created a modified version of the code, eliminating the plotly graph and replacing it with instructions to load my data frame in GCP Big Query.
