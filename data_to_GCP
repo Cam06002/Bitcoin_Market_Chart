@@ -1,0 +1,50 @@
+import requests
+import pandas as pd
+import datetime
+from google.cloud import bigquery
+import os
+
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'mrb.json'
+
+url = 'https://api.coingecko.com/api/v3/'
+ping = url + "ping"
+id = 'bitcoin'
+currency = 'usd'
+days = 30
+market_chart = url + f"coins/{id}/market_chart?vs_currency={currency}&days={days}&interval=daily"
+
+
+def get_data(action):
+  r = requests.get(action).json()
+  return r
+
+
+get_data(market_chart)
+
+data = get_data(market_chart)
+price_df = pd.DataFrame(data['prices'], columns=['date', 'prices'])
+market_df = pd.DataFrame(data['market_caps'], columns=['date2', 'market_caps'])
+volume_df = pd.DataFrame(data['total_volumes'], columns=['date3', 'total_volumes'])
+price_df['date'] = price_df['date'].apply(lambda d: datetime.date.fromtimestamp(d/1000.0))
+
+market = market_df.drop(columns='date2')
+volume = volume_df.drop(columns='date3')
+market_chart_df = pd.concat([price_df, market, volume], axis=1)
+
+file_path = "chart_to_gcp.parquet.gzip"
+market_chart_df.reset_index().to_parquet(file_path, compression='gzip')
+
+# Construct a BigQuery client object.
+client = bigquery.Client()
+
+table_id = "genuine-cat-318917.working_data.30-day-chart"
+
+job_config = bigquery.LoadJobConfig(
+    source_format=bigquery.SourceFormat.PARQUET,
+    write_disposition="WRITE_TRUNCATE"
+)
+
+with open(file_path, "rb") as source_file:
+    job = client.load_table_from_file(source_file, table_id, job_config=job_config)
+
+job.result()  # Waits for the job to complete.
